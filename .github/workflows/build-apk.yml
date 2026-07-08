@@ -1,0 +1,55 @@
+name: Build APK From ZIP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil repo
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract source ZIP
+        run: |
+          mkdir src
+          unzip -q *.zip -d src
+          echo "Isi setelah extract:"
+          find src -maxdepth 3 -type f | head -50
+
+      - name: Cari folder project Android
+        run: |
+          PROJECT_DIR=$(dirname $(find src -name "settings.gradle" -o -name "settings.gradle.kts" | head -1))
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          echo "Project ada di: $PROJECT_DIR"
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          chmod +x gradlew || true
+          if [ -f "./gradlew" ]; then
+            ./gradlew :app:assembleDebug --no-daemon
+          else
+            gradle :app:assembleDebug --no-daemon
+          fi
+
+      - name: Ambil APK
+        run: |
+          mkdir -p out
+          APK=$(find "$PROJECT_DIR/app/build/outputs/apk/debug" -name "*.apk" | head -1)
+          cp "$APK" out/ice_v273_user_debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ice_v273_user_debug_apk
+          path: out/ice_v273_user_debug.apk
