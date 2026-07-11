@@ -39,11 +39,11 @@ jobs:
           chmod +x build_user.sh
           ./build_user.sh
           mkdir -p "$GITHUB_WORKSPACE/out"
-          cp ice_v286_user.apk "$GITHUB_WORKSPACE/out/ice_v286_user.apk"
+          cp ice_v287_user.apk "$GITHUB_WORKSPACE/out/ice_v287_user.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ice_v286_user.apk
-          path: out/ice_v286_user.apk
+          name: ice_v287_user.apk
+          path: out/ice_v287_user.apk
           
