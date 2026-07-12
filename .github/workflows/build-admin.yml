@@ -44,11 +44,11 @@ jobs:
           chmod +x build_admin.sh
           ./build_admin.sh
           mkdir -p "$GITHUB_WORKSPACE/out"
-          cp ice_v289_admin.apk "$GITHUB_WORKSPACE/out/ice_v289_admin.apk"
+          cp ice_v290_admin.apk "$GITHUB_WORKSPACE/out/ice_v290_admin.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ice_v289_admin.apk
-          path: out/ice_v289_admin.apk
+          name: ice_v290_admin.apk
+          path: out/ice_v290_admin.apk
           if-no-files-found: error
