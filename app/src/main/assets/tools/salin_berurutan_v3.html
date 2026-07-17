@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Salin Kode Berurutan Offline</title>
+  <style>
+    :root{
+      --bg:#f4f6f8; --card:#ffffff; --text:#18212f; --muted:#6b7280;
+      --primary:#0f766e; --primary2:#115e59; --danger:#b91c1c; --line:#d8dee8;
+      --ok:#166534; --warn:#92400e;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:760px;margin:auto;padding:16px 14px 40px}
+    .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    h1{font-size:23px;margin:4px 0 6px}
+    .offline{flex:none;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;margin-top:3px}
+    .sub{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.45}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:14px}
+    textarea{width:100%;min-height:250px;border:1px solid var(--line);border-radius:12px;padding:12px;font:16px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical;outline:none}
+    textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(15,118,110,.12)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    button,.fileBtn{border:0;border-radius:12px;padding:12px 15px;font-size:15px;font-weight:700;cursor:pointer;text-align:center}
+    button:active,.fileBtn:active{transform:scale(.985)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .primary{background:var(--primary);color:white;flex:1}
+    .primary:hover{background:var(--primary2)}
+    .secondary,.fileBtn{background:#e8eef3;color:#1f2937}
+    .danger{background:#fee2e2;color:var(--danger)}
+    .hidden{display:none!important}
+    .countPreview{margin-top:9px;color:var(--muted);font-size:13px;font-weight:700}
+    .counter{display:flex;justify-content:space-between;gap:10px;align-items:center;color:var(--muted);font-size:14px;margin-bottom:10px}
+    .current{border:2px dashed var(--primary);background:#ecfdf5;border-radius:14px;padding:18px 12px;text-align:center;font:700 28px/1.25 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all;min-height:72px;display:flex;align-items:center;justify-content:center}
+    .big{width:100%;font-size:18px;padding:16px;margin-top:12px}
+    .status{min-height:24px;margin-top:10px;font-size:14px;font-weight:700;text-align:center}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--danger)}
+    .tip{font-size:13px;color:var(--muted);line-height:1.45;margin-top:10px}
+    .done{padding:18px;text-align:center;color:var(--ok);font-weight:800;font-size:18px}
+    input[type=file]{display:none}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="head">
+      <div>
+        <h1>Salin Kode Berurutan</h1>
+        <p class="sub">Berjalan langsung dari file HTML tanpa internet. Masukkan satu kode per baris.</p>
+      </div>
+      <span class="offline">OFFLINE</span>
+    </div>
+
+    <section class="card" id="inputCard">
+      <textarea id="input" spellcheck="false" autocomplete="off" placeholder="Contoh:
+1003917879
+1003917878
+1003917719"></textarea>
+      <div id="countPreview" class="countPreview">0 kode terdeteksi</div>
+      <div class="row">
+        <button class="primary" id="loadBtn">Muat daftar</button>
+        <button class="secondary" id="pasteBtn">Tempel clipboard</button>
+        <label class="fileBtn" for="fileInput">Pilih file TXT</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain,.csv,text/csv" />
+        <button class="danger" id="clearInputBtn">Kosongkan</button>
+      </div>
+      <div class="tip">Tidak ada batas jumlah baris dari aplikasi. Batas sebenarnya hanya mengikuti kemampuan RAM dan penyimpanan perangkat/browser.</div>
+    </section>
+
+    <section class="card hidden" id="queueCard">
+      <div class="counter">
+        <span id="counter">0 / 0</span>
+        <span id="remaining">Sisa 0</span>
+      </div>
+      <div class="current" id="currentCode">-</div>
+      <button class="primary big" id="copyNextBtn">Salin & lanjut</button>
+      <div class="row">
+        <button class="secondary" id="copyOnlyBtn">Salin kode ini</button>
+        <button class="secondary" id="backBtn">Kembali 1</button>
+        <button class="secondary" id="editBtn">Edit daftar</button>
+        <button class="secondary" id="resetBtn">Mulai dari awal</button>
+        <button class="danger" id="deleteAllBtn">Hapus semua</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="tip">Setelah menekan tombol, pindah ke kolom tujuan dan tempel. Progres tersimpan otomatis di perangkat.</div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const input = $('input');
+  const inputCard = $('inputCard');
+  const queueCard = $('queueCard');
+  const currentCode = $('currentCode');
+  const counter = $('counter');
+  const remaining = $('remaining');
+  const status = $('status');
+  const countPreview = $('countPreview');
+
+  let items = [];
+  let index = 0;
+  let db = null;
+  let saveTimer = null;
+  let statusTimer = null;
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB tidak tersedia'));
+      const req = indexedDB.open('SalinBerurutanDB', 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('data')) {
+          req.result.createObjectStore('data');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Gagal membuka penyimpanan'));
+    });
+  }
+
+  function dbPut(key, value) {
+    if (!db) return Promise.reject(new Error('Database belum siap'));
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readwrite');
+      tx.objectStore('data').put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Gagal menyimpan'));
+    });
+  }
+
+  function dbGet(key) {
+    if (!db) return Promise.resolve(undefined);
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Gagal membaca'));
+    });
+  }
+
+  function dbClear() {
+    if (!db) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readwrite');
+      tx.objectStore('data').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Gagal menghapus'));
+    });
+  }
+
+  function fallbackPut(key, value) {
+    try {
+      localStorage.setItem('salinBerurutan.' + key, JSON.stringify(value));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function fallbackGet(key, defaultValue) {
+    try {
+      const value = localStorage.getItem('salinBerurutan.' + key);
+      return value === null ? defaultValue : JSON.parse(value);
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  function fallbackClear() {
+    ['items','index','raw'].forEach(k => localStorage.removeItem('salinBerurutan.' + k));
+  }
+
+  async function put(key, value) {
+    try {
+      if (db) return await dbPut(key, value);
+    } catch (_) {}
+    if (!fallbackPut(key, value)) throw new Error('Penyimpanan perangkat penuh');
+  }
+
+  async function get(key, defaultValue) {
+    try {
+      if (db) {
+        const value = await dbGet(key);
+        return value === undefined ? defaultValue : value;
+      }
+    } catch (_) {}
+    return fallbackGet(key, defaultValue);
+  }
+
+  async function clearStorage() {
+    try { await dbClear(); } catch (_) {}
+    fallbackClear();
+  }
+
+  function parseCodes(text) {
+    return text.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
+  }
+
+  function formatNumber(n) {
+    return new Intl.NumberFormat('id-ID').format(n);
+  }
+
+  function updateInputCount() {
+    const count = parseCodes(input.value).length;
+    countPreview.textContent = `${formatNumber(count)} kode terdeteksi`;
+  }
+
+  function setStatus(msg, cls='') {
+    clearTimeout(statusTimer);
+    status.textContent = msg;
+    status.className = 'status ' + cls;
+    if (msg) {
+      statusTimer = setTimeout(() => {
+        if (status.textContent === msg) status.textContent = '';
+      }, 2200);
+    }
+  }
+
+  async function saveIndex() {
+    try { await put('index', index); }
+    catch (_) { setStatus('Progres gagal disimpan: penyimpanan penuh', 'err'); }
+  }
+
+  function scheduleRawSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try { await put('raw', input.value); }
+      catch (_) { /* tetap bisa dipakai walau draft tidak tersimpan */ }
+    }, 500);
+  }
+
+  function render() {
+    if (!items.length) {
+      inputCard.classList.remove('hidden');
+      queueCard.classList.add('hidden');
+      updateInputCount();
+      return;
+    }
+
+    inputCard.classList.add('hidden');
+    queueCard.classList.remove('hidden');
+
+    if (index >= items.length) {
+      currentCode.innerHTML = '<div class="done">Semua kode sudah selesai ✓</div>';
+      counter.textContent = `${formatNumber(items.length)} / ${formatNumber(items.length)}`;
+      remaining.textContent = 'Sisa 0';
+      $('copyNextBtn').disabled = true;
+      $('copyOnlyBtn').disabled = true;
+    } else {
+      currentCode.textContent = items[index];
+      counter.textContent = `${formatNumber(index + 1)} / ${formatNumber(items.length)}`;
+      remaining.textContent = `Sisa ${formatNumber(items.length - index)}`;
+      $('copyNextBtn').disabled = false;
+      $('copyOnlyBtn').disabled = false;
+    }
+    $('backBtn').disabled = index <= 0;
+  }
+
+  async function copyText(text) {
+    if (!text) return false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (_) {}
+
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) {}
+    ta.remove();
+    return ok;
+  }
+
+  $('loadBtn').addEventListener('click', async () => {
+    const parsed = parseCodes(input.value);
+    if (!parsed.length) {
+      alert('Belum ada kode. Tempel daftar kode terlebih dahulu.');
+      return;
+    }
+
+    items = parsed;
+    index = 0;
+    try {
+      await put('items', items);
+      await put('index', index);
+      await put('raw', '');
+    } catch (_) {
+      alert('Daftar tetap dapat dipakai, tetapi mungkin terlalu besar untuk disimpan permanen di browser.');
+    }
+    render();
+  });
+
+  $('pasteBtn').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) throw new Error('Clipboard kosong');
+      input.value = text;
+      updateInputCount();
+      scheduleRawSave();
+    } catch (_) {
+      alert('Browser tidak mengizinkan membaca clipboard otomatis. Tekan lama pada kotak lalu pilih Tempel.');
+      input.focus();
+    }
+  });
+
+  $('fileInput').addEventListener('change', async event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+      input.value = await file.text();
+      updateInputCount();
+      scheduleRawSave();
+    } catch (_) {
+      alert('File tidak dapat dibaca. Gunakan file TXT atau CSV teks biasa.');
+    } finally {
+      event.target.value = '';
+    }
+  });
+
+  input.addEventListener('input', () => {
+    updateInputCount();
+    scheduleRawSave();
+  });
+
+  $('clearInputBtn').addEventListener('click', async () => {
+    if (input.value && !confirm('Kosongkan seluruh isi kotak?')) return;
+    input.value = '';
+    updateInputCount();
+    try { await put('raw', ''); } catch (_) {}
+    input.focus();
+  });
+
+  $('copyNextBtn').addEventListener('click', async () => {
+    if (index >= items.length) return;
+    const value = items[index];
+    const ok = await copyText(value);
+    if (!ok) {
+      setStatus('Gagal menyalin. Tekan lama kode lalu pilih Salin.', 'err');
+      return;
+    }
+    index++;
+    render();
+    await saveIndex();
+    setStatus(`Tersalin: ${value}`, 'ok');
+  });
+
+  $('copyOnlyBtn').addEventListener('click', async () => {
+    if (index >= items.length) return;
+    const value = items[index];
+    const ok = await copyText(value);
+    setStatus(ok ? `Tersalin: ${value}` : 'Gagal menyalin', ok ? 'ok' : 'err');
+  });
+
+  $('backBtn').addEventListener('click', async () => {
+    if (index > 0) index--;
+    render();
+    await saveIndex();
+    setStatus('Kembali ke kode sebelumnya', 'warn');
+  });
+
+  $('editBtn').addEventListener('click', async () => {
+    input.value = items.join('\n');
+    items = [];
+    index = 0;
+    try {
+      await put('items', []);
+      await put('index', 0);
+      await put('raw', input.value);
+    } catch (_) {}
+    render();
+    input.focus();
+  });
+
+  $('resetBtn').addEventListener('click', async () => {
+    if (!confirm('Kembali ke kode pertama?')) return;
+    index = 0;
+    render();
+    await saveIndex();
+    setStatus('Antrean kembali ke kode pertama', 'warn');
+  });
+
+  $('deleteAllBtn').addEventListener('click', async () => {
+    if (!confirm('Hapus semua kode, progres, dan data tersimpan?')) return;
+    items = [];
+    index = 0;
+    input.value = '';
+    await clearStorage();
+    render();
+    input.focus();
+  });
+
+  async function init() {
+    try { db = await openDB(); } catch (_) { db = null; }
+
+    const savedItems = await get('items', []);
+    const savedIndex = Number(await get('index', 0));
+    const raw = await get('raw', '');
+
+    input.value = typeof raw === 'string' ? raw : '';
+    if (Array.isArray(savedItems) && savedItems.length) {
+      items = savedItems.map(v => String(v));
+      index = Math.max(0, Math.min(Number.isFinite(savedIndex) ? savedIndex : 0, items.length));
+    }
+    render();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

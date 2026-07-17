@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.ice.tools'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.ice.tools'
+        minSdk 26
+        targetSdk 35
+        versionCode 21
+        versionName '2.1'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.10.1'
+    implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+}

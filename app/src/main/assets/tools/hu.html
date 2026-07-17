@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Filter Kode 10 Digit</title>
+  <style>
+    :root{
+      --bg:#f4f6f8;
+      --card:#ffffff;
+      --text:#18212b;
+      --muted:#64748b;
+      --border:#d9e0e7;
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --danger:#dc2626;
+      --success:#15803d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      width:min(900px,100%);
+      margin:auto;
+      padding:16px;
+    }
+    h1{
+      margin:4px 0 6px;
+      font-size:24px;
+    }
+    .desc{
+      margin:0 0 16px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 6px 18px rgba(15,23,42,.06);
+      margin-bottom:14px;
+    }
+    label{
+      display:block;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+    textarea{
+      width:100%;
+      min-height:230px;
+      resize:vertical;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      font:16px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;
+      outline:none;
+      background:#fff;
+      color:#111827;
+    }
+    textarea:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    }
+    .buttons{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+    button,.file-label{
+      border:0;
+      border-radius:11px;
+      min-height:46px;
+      padding:10px 14px;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+    }
+    .primary{background:var(--primary);color:#fff}
+    .primary:active{background:var(--primary-dark)}
+    .secondary{background:#e8eef7;color:#172033}
+    .danger{background:#fee2e2;color:var(--danger)}
+    .file-label{background:#e8eef7;color:#172033}
+    input[type=file]{display:none}
+    .options{
+      display:flex;
+      flex-wrap:wrap;
+      gap:14px;
+      margin-top:12px;
+      color:#334155;
+    }
+    .options label{
+      margin:0;
+      font-weight:600;
+      display:flex;
+      align-items:center;
+      gap:7px;
+    }
+    .status{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      color:var(--muted);
+      font-size:14px;
+      margin-top:10px;
+    }
+    .ok{color:var(--success);font-weight:700}
+    .tip{
+      background:#eff6ff;
+      border-left:4px solid var(--primary);
+      padding:10px 12px;
+      border-radius:8px;
+      color:#334155;
+      font-size:14px;
+      line-height:1.5;
+    }
+    @media (min-width:700px){
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .buttons{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Filter Kode 10 Digit</h1>
+    <p class="desc">Tempel seluruh isi data. Web ini otomatis mengambil nomor 10 digit seperti <b>1003919455</b> dan membuang tulisan lain.</p>
+
+    <div class="card">
+      <div class="grid">
+        <section>
+          <label for="inputData">Data asli</label>
+          <textarea id="inputData" placeholder="Tempel data dari QuickEdit di sini..."></textarea>
+        </section>
+
+        <section>
+          <label for="outputData">Hasil kode</label>
+          <textarea id="outputData" readonly placeholder="Hasil akan muncul di sini..."></textarea>
+        </section>
+      </div>
+
+      <div class="options">
+        <label><input type="checkbox" id="unique"> Hapus kode duplikat</label>
+        <label><input type="checkbox" id="auto" checked> Filter otomatis</label>
+      </div>
+
+      <div class="buttons">
+        <button class="primary" id="filterBtn">Filter Sekarang</button>
+        <button class="secondary" id="copyBtn">Salin Hasil</button>
+        <label class="file-label" for="fileInput">Buka File TXT</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain" />
+        <button class="danger" id="clearBtn">Hapus Semua</button>
+      </div>
+
+      <div class="status">
+        <span id="countText">0 kode ditemukan</span>
+        <span id="message"></span>
+      </div>
+    </div>
+
+    <div class="tip">
+      <b>Cara pakai:</b> salin semua isi file dari QuickEdit → tempel di kotak “Data asli” → tekan <b>Filter Sekarang</b> → tekan <b>Salin Hasil</b>.
+    </div>
+  </main>
+
+  <script>
+    const inputData = document.getElementById('inputData');
+    const outputData = document.getElementById('outputData');
+    const unique = document.getElementById('unique');
+    const auto = document.getElementById('auto');
+    const countText = document.getElementById('countText');
+    const message = document.getElementById('message');
+    const fileInput = document.getElementById('fileInput');
+
+    function filterCodes() {
+      const text = inputData.value;
+      let matches = text.match(/\b\d{10}\b/g) || [];
+
+      if (unique.checked) {
+        matches = [...new Set(matches)];
+      }
+
+      outputData.value = matches.join('\n');
+      countText.textContent = `${matches.length} kode ditemukan`;
+      message.textContent = matches.length ? 'Siap disalin' : 'Belum ada kode';
+      message.className = matches.length ? 'ok' : '';
+    }
+
+    document.getElementById('filterBtn').addEventListener('click', filterCodes);
+
+    inputData.addEventListener('input', () => {
+      if (auto.checked) filterCodes();
+    });
+
+    unique.addEventListener('change', filterCodes);
+    auto.addEventListener('change', () => {
+      if (auto.checked) filterCodes();
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      if (!outputData.value.trim()) {
+        message.textContent = 'Tidak ada hasil untuk disalin';
+        message.className = '';
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(outputData.value);
+        message.textContent = 'Berhasil disalin';
+        message.className = 'ok';
+      } catch {
+        outputData.focus();
+        outputData.select();
+        document.execCommand('copy');
+        message.textContent = 'Berhasil disalin';
+        message.className = 'ok';
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputData.value = '';
+      outputData.value = '';
+      countText.textContent = '0 kode ditemukan';
+      message.textContent = '';
+      inputData.focus();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        inputData.value = String(reader.result || '');
+        filterCodes();
+      };
+      reader.onerror = () => {
+        message.textContent = 'File gagal dibaca';
+        message.className = '';
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>

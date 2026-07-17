@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>Pemindai Barcode Galeri</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#e5e7eb}
+    .wrap{max-width:620px;margin:auto;padding:18px}.card{background:#111827;border:1px solid #263244;border-radius:18px;padding:18px;box-shadow:0 12px 35px rgba(0,0,0,.25)}
+    h1{font-size:22px;margin:0 0 8px}p{color:#aab4c3;line-height:1.5}.pick{width:100%;padding:15px;border:0;border-radius:14px;background:#2563eb;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+    .preview{margin-top:16px;background:#020617;border-radius:14px;min-height:160px;display:grid;place-items:center;overflow:hidden;border:1px dashed #334155;padding:20px;text-align:center;color:#64748b}
+    .status{margin-top:14px;padding:12px;border-radius:12px;background:#1e293b;color:#cbd5e1}.result{margin-top:14px}textarea{width:100%;min-height:110px;padding:13px;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;font-size:16px;resize:vertical}
+    .row{display:flex;gap:10px;margin-top:10px}.row button{flex:1;padding:13px;border:0;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer}#copyBtn{background:#22c55e;color:#06230f}#clearBtn{background:#334155;color:#fff}
+    .small{font-size:13px;color:#7f8a99;margin-top:14px}.ok{background:#13351f;color:#b7f7c7}.err{background:#3a1515;color:#fecaca}
+  </style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+  <h1>Pemindai Barcode dari Galeri</h1>
+  <p>Foto dipilih oleh Android dan dibaca langsung memakai ML Kit native. Tidak memakai pemilih file atau BarcodeDetector milik WebView.</p>
+  <button class="pick" id="pickBtn" type="button">Pilih Foto dari Galeri</button>
+  <div class="preview" id="preview">Belum ada foto yang dipilih.</div>
+  <div class="status" id="status">Siap digunakan.</div>
+  <div class="result"><textarea id="result" placeholder="Hasil barcode akan muncul di sini" readonly></textarea>
+    <div class="row"><button id="copyBtn" type="button">Salin Hasil</button><button id="clearBtn" type="button">Bersihkan</button></div>
+  </div>
+  <div class="small">Tips: gunakan foto terang, lurus, tidak buram, dan barcode terlihat cukup besar.</div>
+</div></div>
+<script>
+const pickBtn=document.getElementById('pickBtn'),preview=document.getElementById('preview'),statusBox=document.getElementById('status'),resultBox=document.getElementById('result');
+function setStatus(text,type=''){statusBox.textContent=text;statusBox.className='status '+type}
+window.onNativeScanStatus=function(message){setStatus(message)};
+window.onNativeScanResult=function(json){
+  let data;try{data=JSON.parse(json)}catch(e){setStatus('Hasil dari aplikasi tidak valid.','err');return}
+  if(data.fileName) preview.textContent='Foto: '+data.fileName;
+  resultBox.value=Array.isArray(data.values)?data.values.join('\n'):'';
+  setStatus(data.message||'Selesai.',data.ok?'ok':'err');pickBtn.disabled=false;pickBtn.textContent='Pilih Foto dari Galeri';
+};
+pickBtn.addEventListener('click',()=>{
+  if(!window.AndroidScanner||typeof window.AndroidScanner.pickAndScanImage!=='function'){setStatus('Fitur ini harus dibuka dari APK Tools ICE.','err');return}
+  pickBtn.disabled=true;pickBtn.textContent='Membuka galeri...';setStatus('Pilih satu foto barcode dari galeri.');window.AndroidScanner.pickAndScanImage();
+  setTimeout(()=>{if(pickBtn.disabled){pickBtn.disabled=false;pickBtn.textContent='Pilih Foto dari Galeri'}},15000);
+});
+document.getElementById('copyBtn').addEventListener('click',async()=>{const text=resultBox.value.trim();if(!text){setStatus('Belum ada hasil yang dapat disalin.','err');return}try{await navigator.clipboard.writeText(text)}catch(e){resultBox.removeAttribute('readonly');resultBox.select();document.execCommand('copy');resultBox.setAttribute('readonly','')}setStatus('Hasil sudah disalin.','ok')});
+document.getElementById('clearBtn').addEventListener('click',()=>{resultBox.value='';preview.textContent='Belum ada foto yang dipilih.';setStatus('Siap digunakan.')});
+</script>
+</body></html>
